@@ -156,7 +156,6 @@ void Sudoku::render() {
   if (isShowingMenu) {
     SDL_SetRenderDrawColor(renderer, 0x1E, 0x1E, 0x23, 0xFF);
     SDL_RenderClear(renderer);
-
     renderUI();
   } else if (isGenerating) {
     showLoadingScreen();
@@ -191,14 +190,42 @@ void Sudoku::renderUI() {
   float windowWidthIm = ImGui::GetWindowSize().x;
   float buttonWidth = 250.f;
 
-  ImGui::SetWindowFontScale(2.5f);
-  float titleWidth = ImGui::CalcTextSize("SUDOKU PRO").x;
-  ImGui::SetCursorPosX((windowWidthIm - titleWidth) * 0.5f);
-  ImGui::Text("SUDOKU PRO");
-  ImGui::SetWindowFontScale(1.f);
+  auto centerText = [=](const char *text) {
+    float textW = ImGui::CalcTextSize(text).x;
+    ImGui::SetCursorPosX((windowWidthIm - textW) * 0.5f);
+    ImGui::Text("%s", text);
+  };
 
+  ImGui::SetWindowFontScale(2.5f);
+  centerText("SUDOKU PRO");
+  ImGui::SetWindowFontScale(1.f);
   ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
+  if (ImGui::Checkbox("Mute Sound Effects", &isMuted)) {
+    Mix_Volume(-1, isMuted ? 0 : MIX_MAX_VOLUME);
+  }
+
+  ImGui::Spacing();
+
+  const char *fontSizes[] = { "Small", "Normal", "Large" };
+  ImGui::Text("Interface Scale:");
+  if (ImGui::Combo("##FontSize", &fontSizeMode, fontSizes, IM_ARRAYSIZE(fontSizes))) {
+    ImGuiIO &io = ImGui::GetIO();
+    if (fontSizeMode == 0) io.FontGlobalScale = 0.8f;
+    else if (fontSizeMode == 1) io.FontGlobalScale = 1.f;
+    else io.FontGlobalScale = 1.3f;
+
+    textureManager->clearCache();
+  }
+
+  ImGui::Spacing();
+
+  ImGui::Text("Mistake Limit:");
+  if (ImGui::RadioButton("3", maxMistakes == 3)) maxMistakes = 3; ImGui::SameLine();
+  if (ImGui::RadioButton("5", maxMistakes == 5)) maxMistakes = 5; ImGui::SameLine();
+  if (ImGui::RadioButton("Off", maxMistakes == 0)) maxMistakes = 0;
+
+  ImGui::Separator();
 
   ImGui::SetWindowFontScale(2.f);
   float difficultyWidth = ImGui::CalcTextSize("Select Difficulty").x;
@@ -460,6 +487,14 @@ void Sudoku::handleNumericKeys(int key) {
       enteredValue = 0;
     }
 
+    if (board[selectedRow][selectedCol] == solvedBoard[selectedRow][selectedCol] && board[selectedRow][selectedCol] != 0) {
+      return;
+    }
+
+    if (enteredValue != 0 && enteredValue == board[selectedRow][selectedCol]) {
+      return;
+    }
+
     if (enteredValue >= 0 && enteredValue <= 9) {
       if (fixedBoard[selectedRow][selectedCol] == 0) {
         board[selectedRow][selectedCol] = enteredValue;
@@ -589,8 +624,13 @@ Color Sudoku::getCellColor(int row, int col) {
 }
 
 void Sudoku::showNumbers() {
-  //int responsiveFontSize = static_cast<int>(cellSize * 0.75f);
-  TTF_SetFontSize(font, FONT_SIZE);
+  float multiplier = 0.50f;
+  if (fontSizeMode == 0) multiplier = 0.25f;
+  else if (fontSizeMode == 2) multiplier = 0.75f;
+
+  int responsiveFontSize = static_cast<int>(cellSize * multiplier);
+
+  TTF_SetFontSize(font, responsiveFontSize);
 
   for (int row = 0; row < BOARD_DIM; ++row) {
     for (int col = 0; col < BOARD_DIM; ++col) {

@@ -57,6 +57,10 @@ class Sudoku {
     bool isPaused = false;
     bool isPuzzleSolved = false;
     bool isShowingMenu = true;
+    bool isMuted = false;
+
+    int fontSizeMode = 1;
+    int maxMistakes = 3;
 
     int selectedRow = -1;
     int selectedCol = -1;
